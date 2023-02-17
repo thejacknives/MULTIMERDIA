@@ -5,11 +5,9 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 def encoder(image_path, colormap):
-    # Load image
     image = Image.open(image_path)
     rgb_image = np.array(image)
     
-    # Implement colormap
     colormap = np.array(colormap)
     colormap = colormap.astype(float) / 255.0
     
@@ -18,15 +16,12 @@ def encoder(image_path, colormap):
         dist = np.linalg.norm(rgb_image - color, axis=2)
         indexed_image[dist < np.linalg.norm(rgb_image - colormap[indexed_image], axis=2)] = i
     
-    # Visualize image with colormap
     plt.imshow(indexed_image, cmap=plt.cm.colors.ListedColormap(colormap))
-    plt.title("Encoded Image with Custom Colormap")
+    plt.title("Imagem com o nosso belo Colormap")
     plt.show()
     
-    # Split RGB components
     r, g, b = np.split(rgb_image, 3, axis=2)
     
-    # Visualize RGB components
     plt.subplot(2, 2, 1)
     plt.imshow(rgb_image)
     plt.title("Original Image")
@@ -77,7 +72,7 @@ def decode(encoded_image_path):
 
 
 #run functions with peppers.bmp
-colormap = [[100, 0, 0], [0, 100, 0], [0, 0, 100]]
-encoded_image = encoder("peppers.bmp", colormap)
+colormap = [[200, 0, 0], [0, 200, 0], [0, 0, 200]]
+encoded_image = encoder("barn_mountains.bmp", colormap)
 decoded_image = decode(encoded_image)
 
