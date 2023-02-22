@@ -32,6 +32,32 @@ def rgb_to_ycbcr(rgb_image):
     ycbcr_image = Image.fromarray(ycbcr_array, mode='YCbCr')
     return ycbcr_image
 
+def ycbcr_to_rgb(ycbcr_image):
+    ycbcr_array = np.array(ycbcr_image)
+
+    rgb_array = np.empty_like(ycbcr_array)
+
+    for i in range(ycbcr_array.shape[0]):
+        for j in range(ycbcr_array.shape[1]):
+            y = ycbcr_array[i, j, 0]
+            cb = ycbcr_array[i, j, 1]
+            cr = ycbcr_array[i, j, 2]
+
+            r = y + 1.402 * (cr - 128)
+            g = y - 0.344136 * (cb - 128) - 0.714136 * (cr - 128)
+            b = y + 1.772 * (cb - 128)
+
+            rgb_array[i, j, 0] = r
+            rgb_array[i, j, 1] = g
+            rgb_array[i, j, 2] = b
+
+    rgb_image = Image.fromarray(np.uint8(rgb_array), mode='RGB')
+    return rgb_image
+
 rgb_image = Image.open("peppers.jpg")
 ycbcr_image = rgb_to_ycbcr(rgb_image)
 ycbcr_image.show()
+rgb_image = ycbcr_to_rgb(ycbcr_image)
+rgb_image.show()
+
+#Inversão imperfeita, devido a perda de informação na conversão
