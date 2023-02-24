@@ -73,6 +73,6 @@ def decode(encoded_image_path):
 
 #run functions with peppers.bmp
 colormap = [[200, 0, 0], [0, 200, 0], [0, 0, 200]]
-encoded_image = encoder("barn_mountains.bmp", colormap)
+encoded_image = encoder("sitio.bmp", colormap)
 decoded_image = decode(encoded_image)
 

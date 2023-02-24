@@ -30,7 +30,7 @@ def unpad_image(image, original_shape):
     return image[:height, :width]
 
 # Carrega a imagem
-image = cv2.imread('barn_mountains.bmp')
+image = cv2.imread('sitio.bmp')
 
 # Faz o padding
 padded_image = pad_image(image)

@@ -60,4 +60,3 @@ ycbcr_image.show()
 rgb_image = ycbcr_to_rgb(ycbcr_image)
 rgb_image.show()
 
-#Inversão imperfeita, devido a perda de informação na conversão
