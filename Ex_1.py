@@ -22,24 +22,39 @@ def encoder(image_path, colormap, size=(32, 32)):
     plt.title("Imagem com o nosso belo Colormap")
     plt.show()
     
-    r, g, b = np.split(rgb_image, 3, axis=2)
     
+    # Split image into RGB components using numpy indexing
+    r = rgb_image[:, :, 0]
+    g = rgb_image[:, :, 1]
+    b = rgb_image[:, :, 2]
+
+    # Create color images for each channel with zeros in the other channels
+    red_image = np.zeros_like(rgb_image)
+    red_image[:, :, 0] = r
+
+    green_image = np.zeros_like(rgb_image)
+    green_image[:, :, 1] = g
+
+    blue_image = np.zeros_like(rgb_image)
+    blue_image[:, :, 2] = b
+
+    # Visualize RGB components
     plt.subplot(2, 2, 1)
     plt.imshow(rgb_image)
     plt.title("Original Image")
-    
+
     plt.subplot(2, 2, 2)
-    plt.imshow(r.squeeze(), cmap="Reds")
-    plt.title("Red Component")
-    
+    plt.imshow(red_image)
+    plt.title("Red Component (Reds Colormap)")
+
     plt.subplot(2, 2, 3)
-    plt.imshow(g.squeeze(), cmap="Greens")
-    plt.title("Green Component")
-    
+    plt.imshow(green_image)
+    plt.title("Green Component (Greens Colormap)")
+
     plt.subplot(2, 2, 4)
-    plt.imshow(b.squeeze(), cmap="Blues")
-    plt.title("Blue Component")
-    
+    plt.imshow(blue_image)
+    plt.title("Blue Component (Blues Colormap)")
+
     plt.show()
     # guarda a imagem compactada em BytesIO
     compressed_image = io.BytesIO()
