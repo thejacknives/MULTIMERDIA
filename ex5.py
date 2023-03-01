@@ -56,7 +56,17 @@ def ycbcr_to_rgb(ycbcr_image):
 
 rgb_image = Image.open("peppers.jpg")
 ycbcr_image = rgb_to_ycbcr(rgb_image)
-ycbcr_image.show()
+# Extrai cada componente Y, Cb, e Cr
+y, cb, cr = ycbcr_image.split()
+
+# Mostra cada componente em uma figura separada
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+ax1.imshow(y, cmap='gray')
+ax1.set_title('Componente Y')
+ax2.imshow(cb, cmap='gray')
+ax2.set_title('Componente Cb')
+ax3.imshow
+
 rgb_image = ycbcr_to_rgb(ycbcr_image)
 rgb_image.show()
 
