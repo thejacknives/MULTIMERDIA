@@ -134,24 +134,24 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
     decoded_image = Image.new("RGB", (width, height))
 
     # itera cada pixel e da decode a cor inicial
+    """
     for x in range(width):
         for y in range(height):
             encoded_pixel = encoded_image.getpixel((x, y))
             decoded_pixel = (encoded_pixel[1], encoded_pixel[1], encoded_pixel[1])
             decoded_image.putpixel((x, y), decoded_pixel)
-
-    plt.imshow(np.array(decoded_image))
-    plt.title("Decoded Image")
-    plt.show()
-
-    height, width = original_shape[:2]
+            height, width = original_shape[:2]
     padded_height, padded_width = padded_image.shape[:2]
     w_pad = (padded_width - width) // 2
     h_pad = (padded_height - height) // 2
     unpadded_image = padded_image[h_pad:-h_pad, w_pad:-w_pad]
+"""
     plt.imshow(cv2.cvtColor(unpadded_image, cv2.COLOR_BGR2RGB))
     plt.title("Unpadded Image")
     plt.show()
+
+    
+    
 
     ycbcr_array = np.array(ycbcr_image)
 
