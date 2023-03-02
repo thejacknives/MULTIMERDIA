@@ -94,21 +94,19 @@ def encoder(image_path, colormap, size=(32, 32)):
 
     ycbcr_array = np.empty_like(rgb_array)
 
+    ycbcr_matrix = np.array([
+    [65.481, 128.553, 24.966],
+    [-37.797, -74.203, 112.0],
+    [112.0, -93.786, -18.214]
+    ])
+    
+    
     # converte cada pixel RGB para YCbCr
-    for i in range(rgb_array.shape[0]):
-        for j in range(rgb_array.shape[1]):
-            r = rgb_array[i, j, 0]
-            g = rgb_array[i, j, 1]
-            b = rgb_array[i, j, 2]
-            y = 0.299 * r + 0.587 * g + 0.114 * b
-            cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b
-            cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b
-            ycbcr_array[i, j, 0] = y
-            ycbcr_array[i, j, 1] = cb
-            ycbcr_array[i, j, 2] = cr
-
+    ycbcr_image = np.dot(rgb_array, ycbcr_matrix.T)
     # Converte o array para uma imagem e DA RETURN
     ycbcr_image = Image.fromarray(ycbcr_array, mode='YCbCr')
+
+
 
     y, cb, cr = ycbcr_image.split()
 
@@ -134,7 +132,7 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
     decoded_image = Image.new("RGB", (width, height))
 
     # itera cada pixel e da decode a cor inicial
-    """
+    """"""
     for x in range(width):
         for y in range(height):
             encoded_pixel = encoded_image.getpixel((x, y))
@@ -145,7 +143,7 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
     w_pad = (padded_width - width) // 2
     h_pad = (padded_height - height) // 2
     unpadded_image = padded_image[h_pad:-h_pad, w_pad:-w_pad]
-"""
+
     plt.imshow(cv2.cvtColor(unpadded_image, cv2.COLOR_BGR2RGB))
     plt.title("Unpadded Image")
     plt.show()
@@ -193,8 +191,3 @@ encoded_image, padded_image, ycbcr_image = encoder("barn_mountains.bmp", colorma
 
 original_shape = np.array(Image.open("barn_mountains.bmp")).shape
 decoded_image, unpadded_image, rgb_image = decode(encoded_image, padded_image, original_shape, ycbcr_image)
-
-
-
-
-
