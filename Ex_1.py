@@ -6,10 +6,11 @@ from PIL import Image
 import cv2
 
 def encoder(image_path, colormap, size=(32, 32)):
+    """
     image = Image.open(image_path)
     rgb_image = np.array(image)
     colormap = np.array(colormap)
-    colormap = colormap.astype(float) / 255.0
+    colormap = colormap.astype(float) / 255.0                                   ### NS SE E PRECISO MOSTRAR A IMAGEM ANTES COM O COLORMAP TODO FODIDO ###
     indexed_image = np.zeros_like(rgb_image[:,:,0], dtype=int)
     #ESTA A APLICAR O COLORMAP NA IMAGEM ORIGINAL
     for i, color in enumerate(colormap):
@@ -19,7 +20,34 @@ def encoder(image_path, colormap, size=(32, 32)):
     plt.imshow(indexed_image, cmap=plt.cm.colors.ListedColormap(colormap))
     plt.title("Imagem com o nosso belo Colormap")
     plt.show()
+    """
+    #padding
+    image = cv2.imread(image_path)
+    height, width = image.shape[:2]
+    new_height = int(np.ceil(height / size[0])) * size[0]
+    new_width = int(np.ceil(width / size[1])) * size[1]
+    if new_height < height:
+        new_height += size[0]
+    if new_width < width:
+        new_width += size[1]
+    pad_height = new_height - height
+    pad_width = new_width - width
+    top = pad_height // 2
+    bottom = pad_height - top
+    left = pad_width // 2
+    right = pad_width - left
+    padded_image = np.zeros((new_height, new_width, image.shape[2]), dtype=image.dtype)
+    padded_image[top:-bottom, left:-right] = image
+    padded_image[:top, left:-right] = image[0]
+    padded_image[-bottom:, left:-right] = image[-1]
+    padded_image[top:-bottom, :left] = image[:, 0:1]
+    padded_image[top:-bottom, -right:] = image[:, -1:]
 
+    # transforma a array cv2 
+    image = Image.fromarray(cv2.cvtColor(padded_image, cv2.COLOR_BGR2RGB))
+    # normaliza a imagem para poder ser np array para colormap :)) 
+    rgb_image = np.array(image)
+    
     # DIVIDE NOS COMPONENTES RGB
     r = rgb_image[:, :, 0]
     g = rgb_image[:, :, 1]
@@ -57,30 +85,7 @@ def encoder(image_path, colormap, size=(32, 32)):
     compressed_image = io.BytesIO()
     image.save(compressed_image, "BMP")
 
-    #PADDING
 
-    image = cv2.imread(image_path)
-    height, width = image.shape[:2]
-    new_height = int(np.ceil(height / size[0])) * size[0]
-    new_width = int(np.ceil(width / size[1])) * size[1]
-    if new_height < height:
-        new_height += size[0]
-    if new_width < width:
-        new_width += size[1]
-    pad_height = new_height - height
-    pad_width = new_width - width
-    top = pad_height // 2
-    bottom = pad_height - top
-    left = pad_width // 2
-    right = pad_width - left
-    padded_image = np.zeros((new_height, new_width, image.shape[2]), dtype=image.dtype)
-    padded_image[top:-bottom, left:-right] = image
-    padded_image[:top, left:-right] = image[0]
-    padded_image[-bottom:, left:-right] = image[-1]
-    padded_image[top:-bottom, :left] = image[:, 0:1]
-    padded_image[top:-bottom, -right:] = image[:, -1:]
-    plt.imshow(cv2.cvtColor(padded_image, cv2.COLOR_BGR2RGB))
-    plt.show()
 
     #rgb para ycbcr
     rgb_image = Image.open(image_path)
