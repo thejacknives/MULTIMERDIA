@@ -88,7 +88,7 @@ def encoder(image_path, colormap, size=(32, 32)):
 
 
     #rgb para ycbcr
-    rgb_image = Image.open(image_path)
+    #rgb_image = Image.open(image_path)
     # manda a imagem RGB para um array numpy
     rgb_array = np.array(rgb_image)
 
