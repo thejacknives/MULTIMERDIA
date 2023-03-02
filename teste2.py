@@ -1,258 +1,193 @@
-import matplotlib.pyplot as plt
-import matplotlib.colors as clr
+import io
+from matplotlib import image
 import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
 import cv2
-from scipy.fftpack import dct, idct
 
+def encoder(image_path, colormap, size=(32, 32)):
+    image = cv2.imread(image_path)
+    height, width = image.shape[:2]
+    new_height = int(np.ceil(height / size[0])) * size[0]
+    new_width = int(np.ceil(width / size[1])) * size[1]
+    if new_height < height:
+        new_height += size[0]
+    if new_width < width:
+        new_width += size[1]
+    pad_height = new_height - height
+    pad_width = new_width - width
+    top = pad_height // 2
+    bottom = pad_height - top
+    left = pad_width // 2
+    right = pad_width - left
+    padded_image = np.zeros((new_height, new_width, image.shape[2]), dtype=image.dtype)
+    padded_image[top:-bottom, left:-right] = image
+    padded_image[:top, left:-right] = image[0]
+    padded_image[-bottom:, left:-right] = image[-1]
+    padded_image[top:-bottom, :left] = image[:, 0:1]
+    padded_image[top:-bottom, -right:] = image[:, -1:]
 
-matrix_Q_Y = np.array(
-    [[16, 11, 10, 16, 24, 40, 51, 61],
-     [12, 12, 14, 19, 26, 58, 60, 55],
-     [14, 13, 16, 24, 40, 57, 69, 56],
-     [14, 17, 22, 29, 51, 87, 80, 62],
-     [18, 22, 37, 56, 68, 109, 103, 77],
-     [24, 35, 55, 64, 81, 104, 113, 92],
-     [49, 64, 78, 87, 103, 121, 120, 101],
-     [72, 92, 95, 98, 112, 100, 103, 99]])
+    rgb_image = np.array(image)
+    colormap = np.array(colormap)
+    colormap = colormap.astype(float) / 255.0
+    indexed_image = np.zeros_like(rgb_image[:,:,0], dtype=int)
+    
+    for i, color in enumerate(colormap):
+        dist = np.linalg.norm(rgb_image - color, axis=2)
+        indexed_image[dist < np.linalg.norm(rgb_image - colormap[indexed_image], axis=2)] = i
+    
+    plt.imshow(indexed_image, cmap=plt.cm.colors.ListedColormap(colormap))
+    plt.title("Imagem com o nosso belo Colormap")
+    plt.show()
 
+    # Split image into RGB components using numpy indexing
+    r = rgb_image[:, :, 0]
+    g = rgb_image[:, :, 1]
+    b = rgb_image[:, :, 2]
 
-matrix_Q_CbCr = np.array([
-    [17, 18, 24, 47, 99, 99, 99, 99],
-    [18, 21, 26, 66, 99, 99, 99, 99],
-    [24, 26, 56, 99, 99, 99, 99, 99],
-    [47, 66, 99, 99, 99, 99, 99, 99],
-    [99, 99, 99, 99, 99, 99, 99, 99],
-    [99, 99, 99, 99, 99, 99, 99, 99],
-    [99, 99, 99, 99, 99, 99, 99, 99],
-    [99, 99, 99, 99, 99, 99, 99, 99]])
+    # Create color images for each channel with zeros in the other channels
+    red_image = np.zeros_like(rgb_image)
+    red_image[:, :, 0] = r
 
+    green_image = np.zeros_like(rgb_image)
+    green_image[:, :, 1] = g
 
-def quantize(dct, matrix_Q):
-    return np.round(dct / matrix_Q)
+    blue_image = np.zeros_like(rgb_image)
+    blue_image[:, :, 2] = b
 
+    # Visualize RGB components
+    plt.subplot(2, 2, 1)
+    plt.imshow(rgb_image)
+    plt.title("Original Image")
 
-def dequantize(quantizedMatrix, matrix_Q):
-    return np.round(quantizedMatrix * matrix_Q)
+    plt.subplot(2, 2, 2)
+    plt.imshow(red_image)
+    plt.title("Red Component (Reds Colormap)")
 
+    plt.subplot(2, 2, 3)
+    plt.imshow(green_image)
+    plt.title("Green Component (Greens Colormap)")
 
-def padImage32(image):
-    [nl, nc] = image.shape
-    nel = 32-nl % 32
-    nec = 32-nc % 32
-    # get last line
-    # extend matrix
-    ll = image[nl-1, :][np.newaxis, :]
-    # create repetition matrix
-    repl = ll.repeat(nel, axis=0)
-    # pad matrix
-    imagePadded = np.vstack((image, repl))
+    plt.subplot(2, 2, 4)
+    plt.imshow(blue_image)
+    plt.title("Blue Component (Blues Colormap)")
 
-    # get last column
-    # extend matrix
-    lc = imagePadded[:, nc-1][:, np.newaxis]
-    # create repetition matrix
-    repc = lc.repeat(nec, axis=1)
-    # pad matrix
-    imagePaddedBoth = np.hstack((imagePadded, repc))
+    plt.show()
+    # guarda a imagem compactada em BytesIO
+    compressed_image = io.BytesIO()
+    image.save(compressed_image, "BMP")
 
-    return imagePaddedBoth, [nl, nc]
+    #PADDING
 
+   
+    #rgb para ycbcr
+    rgb_image = Image.open(image_path)
+    # manda a imagem RGB para um array numpy
+    rgb_array = np.array(rgb_image)
 
-def unpadImage(image, size):
-    image = image[:size[0], :size[1]]
-    return image
+    ycbcr_array = np.empty_like(rgb_array)
 
+    # converte cada pixel RGB para YCbCr
+    for i in range(rgb_array.shape[0]):
+        for j in range(rgb_array.shape[1]):
+            r = rgb_array[i, j, 0]
+            g = rgb_array[i, j, 1]
+            b = rgb_array[i, j, 2]
+            y = 0.299 * r + 0.587 * g + 0.114 * b
+            cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b
+            cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b
+            ycbcr_array[i, j, 0] = y
+            ycbcr_array[i, j, 1] = cb
+            ycbcr_array[i, j, 2] = cr
 
-def readImage(image):
-    return plt.imread(image)
+    # Converte o array para uma imagem e DA RETURN
+    ycbcr_image = Image.fromarray(ycbcr_array, mode='YCbCr')
 
+    y, cb, cr = ycbcr_image.split()
 
-def showImage(image, cmap=None):
-    plt.imshow(image, cmap)
-
-
-def rgbChannels(image):
-    R = image[:, :, 0]
-    G = image[:, :, 1]
-    B = image[:, :, 2]
-    return R, G, B
-
-
-def rgbChannelsInverse(R, G, B):
-    return np.dstack((R, G, B))
-
-
-# plt.figure == abre uma nova janela
-# img.shape()
-ycbcr_matrix = np.array([
-    [65.481, 128.553, 24.966],
-    [-37.797, -74.203, 112.0],
-    [112.0, -93.786, -18.214]
-])
-
-
-# Exercício 5
-def rgb_to_ycbcr(rgb_image):
-    # Define a matriz de transformação
-
-    # Realiza a multiplicação matricial para obter a imagem YCbCr
-    ycbcr = np.dot(rgb_image, ycbcr_matrix.T)
-
-    G = ycbcr[:, :, 1] + 128
-    B = ycbcr[:, :, 2] + 128
-
-    return ycbcr
-
-
-def ycbcr_to_rgb(ycbcr_image, show):
-    # Define a matriz de transformação inversa
-    inverse_transform = np.linalg.inv(ycbcr_matrix)
-
-    G = ycbcr_image[:, :, 1] - 128
-    B = ycbcr_image[:, :, 2] - 128
-
-    # Realiza a multiplicação matricial para obter a imagem RGB
-    rgb = np.dot(ycbcr_image, inverse_transform.T)
-
-    # Normaliza a imagem RGB para o intervalo [0, 255]
-    rgb[rgb < 0] = 0
-    rgb[rgb > 255] = 255
-
-    normalized_rgb = np.round(rgb).astype(np.uint8)
-    if show:
-        plt.figure()
-        showImage(rgb)
-
-    return normalized_rgb
-
-
-def showCanals(ycbcr_image):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-
-    # Plota o canal Y com colormap gray
-    ax1.imshow(ycbcr_image[:, :, 0], cmap='gray')
-    ax1.set_title("Canal Y")
-
-    # Plota o canal Cb com colormap jet
-    ax2.imshow(ycbcr_image[:, :, 1], cmap='gray')
-    ax2.set_title("Canal Cb")
-
-    # Plota o canal Cr com colormap jet
-    ax3.imshow(ycbcr_image[:, :, 2], cmap='gray')
-    ax3.set_title("Canal Cr")
+    ax1.imshow(y, cmap='gray')
+    ax1.set_title('Componente Y')
+    ax2.imshow(cb, cmap='gray')
+    ax2.set_title('Componente Cb')
+    ax3.imshow(cr, cmap='gray')
+    ax3.set_title('Componente Cr')
+    plt.show()
 
 
-def getYrefFcrFcb(string):
-    return string.split(":")
 
 
-def downSample(image, factor):
-    valuesOfDownSample = getYrefFcrFcb(factor)
-    Yref = valuesOfDownSample[0]
-    Fcr = valuesOfDownSample[1]
-    Fcb = valuesOfDownSample[2]
+    return [compressed_image, padded_image, ycbcr_image]
 
-    if int(Fcb) == 0:
-        downSampleImageCr = cv2.resize(
-            image[:, :, 1], None, fx=1/int(Fcr), fy=1/int(Fcr))
-        downSampleImageCb = cv2.resize(
-            image[:, :, 2], None, fx=1/int(Fcr), fy=1/int(Fcr))
-    else:
-        downSampleImageCr = cv2.resize(
-            image[:, :, 1], None, fx=1/int(Fcr), fy=1)
-        downSampleImageCb = cv2.resize(
-            image[:, :, 2], None, fx=1/int(Fcb), fy=1)
+def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
+    encoded_image = Image.open(encoded_image_path)
 
-    fig = plt.figure(figsize=(15, 5))
-    fig.add_subplot(1, 3, 1)
-    showImage(image[:, :, 0], "gray")
-    fig.add_subplot(1, 3, 2)
-    showImage(downSampleImageCr, "gray")
-    fig.add_subplot(1, 3, 3)
-    showImage(downSampleImageCb, "gray")
+    width, height = encoded_image.size
 
-    return np.dstack((downSampleImageCb, downSampleImageCr)), factor
+    decoded_image = Image.new("RGB", (width, height))
 
+    # itera cada pixel e da decode a cor inicial
+    for x in range(width):
+        for y in range(height):
+            encoded_pixel = encoded_image.getpixel((x, y))
+            decoded_pixel = (encoded_pixel[1], encoded_pixel[1], encoded_pixel[1])
+            decoded_image.putpixel((x, y), decoded_pixel)
 
-def upSample(Y_d, image, factor):
-    valuesOfDownSample = getYrefFcrFcb(factor)
-    Yref = valuesOfDownSample[0]
-    Fcr = valuesOfDownSample[1]
-    Fcb = valuesOfDownSample[2]
+    plt.imshow(np.array(decoded_image))
+    plt.title("Decoded Image")
+    plt.show()
 
-    if int(Fcb) == 0:
-        upSampleImageCb = cv2.resize(
-            image[:, :, 0], None, fx=int(Fcr), fy=int(Fcr))
-        upSampleImageCr = cv2.resize(
-            image[:, :, 1], None, fx=int(Fcr), fy=int(Fcr))
+    height, width = original_shape[:2]
+    padded_height, padded_width = padded_image.shape[:2]
+    w_pad = (padded_width - width) // 2
+    h_pad = (padded_height - height) // 2
+    unpadded_image = padded_image[h_pad:-h_pad, w_pad:-w_pad]
+    plt.imshow(cv2.cvtColor(unpadded_image, cv2.COLOR_BGR2RGB))
+    plt.title("Unpadded Image")
+    plt.show()
 
-    else:
-        upSampleImageCb = cv2.resize(image[:, :, 0], None, fx=int(Fcr), fy=1)
-        upSampleImageCr = cv2.resize(image[:, :, 1], None, fx=int(Fcr), fy=1)
+    ycbcr_array = np.array(ycbcr_image)
 
-    fig = plt.figure(figsize=(15, 5))
-    fig.add_subplot(1, 3, 1)
-    showImage(Y_d, "gray")
-    fig.add_subplot(1, 3, 2)
-    showImage(upSampleImageCr, "gray")
-    fig.add_subplot(1, 3, 3)
-    showImage(upSampleImageCb, "gray")
+    rgb_array = np.empty_like(ycbcr_array)
 
-    return np.dstack((Y_d, upSampleImageCb, upSampleImageCr)), factor
+    for i in range(ycbcr_array.shape[0]):
+        for j in range(ycbcr_array.shape[1]):
+            y = ycbcr_array[i, j, 0]
+            cb = ycbcr_array[i, j, 1]
+            cr = ycbcr_array[i, j, 2]
 
+            r = y + 1.402 * (cr - 128)
+            g = y - 0.344136 * (cb - 128) - 0.714136 * (cr - 128)
+            b = y + 1.772 * (cb - 128)
 
-def DCT(channel):
-    return dct(dct(channel, norm='ortho').T, norm='ortho').T
+            rgb_array[i, j, 0] = r
+            rgb_array[i, j, 1] = g
+            rgb_array[i, j, 2] = b
 
+    rgb_image = Image.fromarray(np.uint8(rgb_array), mode='RGB')
 
-def IDCT(channel):
-    return idct(idct(channel, norm='ortho').T, norm='ortho').T
+    r, g, b = rgb_image.split()
 
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+    ax1.imshow(r, cmap='gray')
+    ax1.set_title('Componente R')
+    ax2.imshow(g, cmap='gray')
+    ax2.set_title('Componente G')
+    ax3.imshow(b, cmap='gray')
+    ax3.set_title('Componente B')
+    plt.show()
 
-def logDCT(dct):
-    return np.log(abs(dct) + 0.0001)
-
-# tuple (r,g,b) de 0 a 1
-# color "grey" "green" "red"
+    return [decoded_image, padded_image[:height, :width], rgb_image]
 
 
-# do a function to do DTC in 8*8 blocks
-def DCTBSxBS(channel, n):
-    shape = channel.shape
-    for i in range(int(shape[0]/n)):
-        for j in range(int(shape[1]/n)):
-            channel[i*n:(i+1)*n, j*n:(j+1) *
-                    n] = DCT(channel[i*n:(i+1)*n, j*n:(j+1)*n])
-    return channel
+colormap = [[200, 0, 0], [0, 200, 0], [0, 0, 200]]
+encoded_image, padded_image, ycbcr_image = encoder("barn_mountains.bmp", colormap)
 
 
-def IDCTBSxBS(channel, n):
-    shape = channel.shape
-    for i in range(int(shape[0]/n)):
-        for j in range(int(shape[1]/n)):
-            channel[i*n:(i+1)*n, j*n:(j+1) *
-                    n] = IDCT(channel[i*n:(i+1)*n, j*n:(j+1)*n])
-    return channel
+original_shape = np.array(Image.open("barn_mountains.bmp")).shape
+decoded_image, unpadded_image, rgb_image = decode(encoded_image, padded_image, original_shape, ycbcr_image)
 
 
-def QBSxBS(channel, n, quantization_matrix):
-    shape = channel.shape
-    for i in range(int(shape[0]/n)):
-        for j in range(int(shape[1]/n)):
-            channel[i*n:(i+1)*n, j*n:(j+1) * n] = quantize((channel[i *
-                                                                    n:(i+1)*n, j*n:(j+1)*n]), quantization_matrix)
-    return channel
 
 
-def IQBSxBS(channel, n, quantization_matrix):
-    shape = channel.shape
-    for i in range(int(shape[0]/n)):
-        for j in range(int(shape[1]/n)):
-            channel[i*n:(i+1)*n, j*n:(j+1) * n] = dequantize((channel[i *
-                                                                      n:(i+1)*n, j*n:(j+1)*n]), quantization_matrix)
-    return channel
-
-
-def colorMap(color, tupleBegin, tupleEnd):
-    return clr.LinearSegmentedColormap.from_list(color, [tupleBegin, tupleEnd], 256)
 

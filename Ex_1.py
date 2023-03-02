@@ -7,13 +7,11 @@ import cv2
 
 def encoder(image_path, colormap, size=(32, 32)):
     image = Image.open(image_path)
-
     rgb_image = np.array(image)
-    
     colormap = np.array(colormap)
     colormap = colormap.astype(float) / 255.0
-    
     indexed_image = np.zeros_like(rgb_image[:,:,0], dtype=int)
+    #ESTA A APLICAR O COLORMAP NA IMAGEM ORIGINAL
     for i, color in enumerate(colormap):
         dist = np.linalg.norm(rgb_image - color, axis=2)
         indexed_image[dist < np.linalg.norm(rgb_image - colormap[indexed_image], axis=2)] = i
@@ -21,14 +19,13 @@ def encoder(image_path, colormap, size=(32, 32)):
     plt.imshow(indexed_image, cmap=plt.cm.colors.ListedColormap(colormap))
     plt.title("Imagem com o nosso belo Colormap")
     plt.show()
-    
-    
-    # Split image into RGB components using numpy indexing
+
+    # DIVIDE NOS COMPONENTES RGB
     r = rgb_image[:, :, 0]
     g = rgb_image[:, :, 1]
     b = rgb_image[:, :, 2]
 
-    # Create color images for each channel with zeros in the other channels
+    # SEPARA OS CHANNELS
     red_image = np.zeros_like(rgb_image)
     red_image[:, :, 0] = r
 
@@ -38,7 +35,7 @@ def encoder(image_path, colormap, size=(32, 32)):
     blue_image = np.zeros_like(rgb_image)
     blue_image[:, :, 2] = b
 
-    # Visualize RGB components
+    # VE COM OS CHANNELS CRIADOS EM CIMA
     plt.subplot(2, 2, 1)
     plt.imshow(rgb_image)
     plt.title("Original Image")
