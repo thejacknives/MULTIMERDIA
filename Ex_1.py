@@ -67,19 +67,19 @@ def encoder(image_path, colormap, size=(32, 32)):
     # VE COM OS CHANNELS CRIADOS EM CIMA
     plt.subplot(2, 2, 1)
     plt.imshow(rgb_image)
-    plt.title("Original Image")
+    plt.title("Original Image (RGB) (Imagem original)")
 
     plt.subplot(2, 2, 2)
     plt.imshow(red_image)
-    plt.title("Red Component (Reds Colormap)")
+    plt.title("Red Component (Reds Colormap) (El componente rojo)")
 
     plt.subplot(2, 2, 3)
     plt.imshow(green_image)
-    plt.title("Green Component (Greens Colormap)")
+    plt.title("Green Component (Greens Colormap) (El componente verde)")
 
     plt.subplot(2, 2, 4)
     plt.imshow(blue_image)
-    plt.title("Blue Component (Blues Colormap)")
+    plt.title("Blue Component (Blues Colormap) (El componente azul)")
 
     plt.show()
     # guarda a imagem compactada em BytesIO
@@ -143,10 +143,11 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
             decoded_pixel = (encoded_pixel[1], encoded_pixel[1], encoded_pixel[1])
             decoded_image.putpixel((x, y), decoded_pixel)
             height, width = original_shape[:2]
+
     padded_height, padded_width = padded_image.shape[:2]
-    w_pad = (padded_width - width) // 2
-    h_pad = (padded_height - height) // 2
-    unpadded_image = padded_image[h_pad:-h_pad, w_pad:-w_pad]
+    w_pad = (padded_width - width)
+    h_pad = (padded_height - height)
+    unpadded_image = padded_image[:-h_pad, :-w_pad]
 
     plt.imshow(cv2.cvtColor(unpadded_image, cv2.COLOR_BGR2RGB))
     plt.title("Unpadded Image")
@@ -157,11 +158,17 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
     Cb = ycbcr_image[:, :, 1]
     Cr = ycbcr_image[:, :, 2]
 
+    # matriz_conversao = np.array([
+    #     [1.0, 0.0, 1.402],
+    #     [1.0, -0.344136, -0.714136],
+    #     [1.0, 1.772, 0.0]
+    #     ])
     matriz_conversao = np.array([
-        [1.0, 0.0, 1.402],
-        [1.0, -0.344136, -0.714136],
-        [1.0, 1.772, 0.0]
-        ])
+    [0.299, 0.587, 0.114],
+    [-0.168736, -0.331264, 0.5],
+    [0.5, -0.418688, -0.081312]
+    ])
+    matriz_conversao = np.linalg.inv(matriz_conversao)
 
     r = Y * matriz_conversao[0][0] + matriz_conversao[0][1] * (Cb - 128) + matriz_conversao[0][2] * (Cr - 128)
     g = Y * matriz_conversao[1][0] + matriz_conversao[1][1] * (Cb - 128) + matriz_conversao[1][2] * (Cr - 128)
