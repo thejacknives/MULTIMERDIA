@@ -88,24 +88,27 @@ def encoder(image_path, colormap, size=(32, 32)):
 
 
     #rgb para ycbcr
-    #rgb_image = Image.open(image_path)
-    # manda a imagem RGB para um array numpy
-    rgb_array = np.array(rgb_image)
-
-    ycbcr_array = np.empty_like(rgb_array)
-
-    ycbcr_matrix = np.array([
-    [65.481, 128.553, 24.966],
-    [-37.797, -74.203, 112.0],
-    [112.0, -93.786, -18.214]
+    #matriz de conversao
+    matriz_conversao = np.array([
+    [0.299, 0.587, 0.114],
+    [-0.168736, -0.331264, 0.5],
+    [0.5, -0.418688, -0.081312]
     ])
-    
-    
-    # converte cada pixel RGB para YCbCr
-    ycbcr_image = np.dot(rgb_array, ycbcr_matrix.T)
+
+    y = r * matriz_conversao[0][0] + g * matriz_conversao[0][1] + b * matriz_conversao[0][2]
+    cb = matriz_conversao[1][0] * r + (matriz_conversao[1][1]) * g + matriz_conversao[1][2] * b + 128
+    cr = matriz_conversao[2][0] * r + (matriz_conversao[2][1] * g) + (matriz_conversao[2][2] * b) + 128
+
+    #arredondamentos
+    y = np.round(y).astype(int)
+    cb = np.round(cb).astype(int)
+    cr = np.round(cr).astype(int)
+
+    #guarda os valores num array
+    ycbcr_array = np.stack([y, cb, cr], axis=-1).astype(np.uint8)
+
     # Converte o array para uma imagem e DA RETURN
     ycbcr_image = Image.fromarray(ycbcr_array, mode='YCbCr')
-
 
 
     y, cb, cr = ycbcr_image.split()
@@ -148,30 +151,33 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
     plt.title("Unpadded Image")
     plt.show()
 
-    
-    
+    ycbcr_image = np.array(ycbcr_image)
+    Y = ycbcr_image[:, :, 0]
+    Cb = ycbcr_image[:, :, 1]
+    Cr = ycbcr_image[:, :, 2]
 
-    ycbcr_array = np.array(ycbcr_image)
+    matriz_conversao = np.array([
+        [1.0, 0.0, 1.402],
+        [1.0, -0.344136, -0.714136],
+        [1.0, 1.772, 0.0]
+        ])
 
-    rgb_array = np.empty_like(ycbcr_array)
+    r = Y * matriz_conversao[0][0] + matriz_conversao[0][1] * (Cb - 128) + matriz_conversao[0][2] * (Cr - 128)
+    g = Y * matriz_conversao[1][0] + matriz_conversao[1][1] * (Cb - 128) + matriz_conversao[1][2] * (Cr - 128)
+    b = Y * matriz_conversao[2][0] + matriz_conversao[2][1] * (Cb - 128) + matriz_conversao[2][2] * (Cr - 128)
 
-    for i in range(ycbcr_array.shape[0]):
-        for j in range(ycbcr_array.shape[1]):
-            y = ycbcr_array[i, j, 0]
-            cb = ycbcr_array[i, j, 1]
-            cr = ycbcr_array[i, j, 2]
+    r= np.round(r).astype(int)
+    g = np.round(g).astype(int)
+    b = np.round(b).astype(int)
+    r = np.clip(r, 0, 255).astype(np.uint8)
+    g = np.clip(g, 0, 255).astype(np.uint8)
+    b = np.clip(b, 0, 255).astype(np.uint8)
 
-            r = y + 1.402 * (cr - 128)
-            g = y - 0.344136 * (cb - 128) - 0.714136 * (cr - 128)
-            b = y + 1.772 * (cb - 128)
-
-            rgb_array[i, j, 0] = r
-            rgb_array[i, j, 1] = g
-            rgb_array[i, j, 2] = b
-
+    rgb_array = np.stack([r, g, b], axis=-1).astype(np.uint8) 
     rgb_image = Image.fromarray(np.uint8(rgb_array), mode='RGB')
 
     r, g, b = rgb_image.split()
+
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
     ax1.imshow(r, cmap='gray')
