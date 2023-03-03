@@ -32,16 +32,17 @@ def encoder(image_path, colormap, size=(32, 32)):
         new_width += size[1]
     pad_height = new_height - height
     pad_width = new_width - width
-    top = pad_height // 2
-    bottom = pad_height - top
-    left = pad_width // 2
-    right = pad_width - left
+    top = 0
+    bottom = pad_height - new_height
+    left = 0
+    right = pad_width - new_width
     padded_image = np.zeros((new_height, new_width, image.shape[2]), dtype=image.dtype)
     padded_image[top:-bottom, left:-right] = image
     padded_image[:top, left:-right] = image[0]
     padded_image[-bottom:, left:-right] = image[-1]
     padded_image[top:-bottom, :left] = image[:, 0:1]
     padded_image[top:-bottom, -right:] = image[:, -1:]
+    padded_image[-bottom:, -right:] = image[-1, -1]
 
     # transforma a array cv2 
     image = Image.fromarray(cv2.cvtColor(padded_image, cv2.COLOR_BGR2RGB))
