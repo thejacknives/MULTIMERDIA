@@ -1,7 +1,7 @@
 import io
-from matplotlib import image
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as clr
 from PIL import Image
 import cv2
 
@@ -22,63 +22,39 @@ def encoder(image_path, colormap, size=(32, 32)):
     plt.show()
     """
     #padding
-    image = cv2.imread(image_path)
-    height, width = image.shape[:2]
-    new_height = int(np.ceil(height / size[0])) * size[0]
-    new_width = int(np.ceil(width / size[1])) * size[1]
-    if new_height < height:
-        new_height += size[0]
-    if new_width < width:
-        new_width += size[1]
-    pad_height = new_height - height
-    pad_width = new_width - width
-    top = 0
-    bottom = pad_height - new_height
-    left = 0
-    right = pad_width - new_width
-    padded_image = np.zeros((new_height, new_width, image.shape[2]), dtype=image.dtype)
-    padded_image[top:-bottom, left:-right] = image
-    padded_image[:top, left:-right] = image[0]
-    padded_image[-bottom:, left:-right] = image[-1]
-    padded_image[top:-bottom, :left] = image[:, 0:1]
-    padded_image[top:-bottom, -right:] = image[:, -1:]
-    padded_image[-bottom:, -right:] = image[-1, -1]
+    image = plt.imread(image_path)
+    width, height = image.shape
+    padded_image = np.zeros((height + 2, width + 2, 3), dtype=np.uint8)
 
-    # transforma a array cv2 
-    image = Image.fromarray(cv2.cvtColor(padded_image, cv2.COLOR_BGR2RGB))
+    padded_image = Image.fromarray(cv2.cvtColor(padded_image, cv2.COLOR_BGR2RGB))
     # normaliza a imagem para poder ser np array para colormap :)) 
-    rgb_image = np.array(image)
+    padded_image = np.array(padded_image)
     
     # DIVIDE NOS COMPONENTES RGB
-    r = rgb_image[:, :, 0]
-    g = rgb_image[:, :, 1]
-    b = rgb_image[:, :, 2]
+    r = padded_image[:, :, 0]
+    g = padded_image[:, :, 1]
+    b = padded_image[:, :, 2]
 
-    # SEPARA OS CHANNELS
-    red_image = np.zeros_like(rgb_image)
-    red_image[:, :, 0] = r
-
-    green_image = np.zeros_like(rgb_image)
-    green_image[:, :, 1] = g
-
-    blue_image = np.zeros_like(rgb_image)
-    blue_image[:, :, 2] = b
+    cmred =clr.LinearSegmentedColormap.from_list('red',[(0,0,0), (1,0,0)],256)
+    cmgreen = clr.LinearSegmentedColormap.from_list('green',[(0,0,0), (0,1,0)],256)
+    cmblue = clr.LinearSegmentedColormap.from_list('blue',[(0,0,0), (0,0,1)],256)
+    cmgray = clr.LinearSegmentedColormap.from_list('grey',[(0,0,0), (1,1,1)],256)
 
     # VE COM OS CHANNELS CRIADOS EM CIMA
     plt.subplot(2, 2, 1)
-    plt.imshow(rgb_image)
+    plt.imshow(padded_image)
     plt.title("Original Image (RGB) (Imagem original)")
 
     plt.subplot(2, 2, 2)
-    plt.imshow(red_image)
+    plt.imshow(r, cmred)
     plt.title("Red Component (Reds Colormap) (El componente rojo)")
 
     plt.subplot(2, 2, 3)
-    plt.imshow(green_image)
+    plt.imshow(g, cmgreen)
     plt.title("Green Component (Greens Colormap) (El componente verde)")
 
     plt.subplot(2, 2, 4)
-    plt.imshow(blue_image)
+    plt.imshow(b, cmblue)
     plt.title("Blue Component (Blues Colormap) (El componente azul)")
 
     plt.show()
@@ -174,12 +150,12 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
     g = Y * matriz_conversao[1][0] + matriz_conversao[1][1] * (Cb - 128) + matriz_conversao[1][2] * (Cr - 128)
     b = Y * matriz_conversao[2][0] + matriz_conversao[2][1] * (Cb - 128) + matriz_conversao[2][2] * (Cr - 128)
 
-    r= np.round(r).astype(int)
-    g = np.round(g).astype(int)
-    b = np.round(b).astype(int)
     r = np.clip(r, 0, 255).astype(np.uint8)
     g = np.clip(g, 0, 255).astype(np.uint8)
     b = np.clip(b, 0, 255).astype(np.uint8)
+    r= np.round(r).astype(int)
+    g = np.round(g).astype(int)
+    b = np.round(b).astype(int)
 
     rgb_array = np.stack([r, g, b], axis=-1).astype(np.uint8) 
     rgb_image = Image.fromarray(np.uint8(rgb_array), mode='RGB')
