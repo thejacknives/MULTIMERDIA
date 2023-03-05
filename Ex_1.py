@@ -177,7 +177,7 @@ def encoder(image_path, colormap, size=(32, 32)):
     ax3.set_title('Componente Cr')
     plt.show()
 
-    y_d, cb_d, cr_d = subsample_yuv(y.astype(np.uint8), cb.astype(np.uint8), cr.astype(np.uint8), "4:2:2")
+    y_d, cb_d, cr_d = subsample_yuv(y.astype(np.uint8), cb.astype(np.uint8), cr.astype(np.uint8), "4:2:0")
 
     #plot new image
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
