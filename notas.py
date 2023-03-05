@@ -17,3 +17,6 @@ newl = lt.reapeat(nlf,axis=0)
 newc = ct.repeat(nlf,axis=1)
 
 xp = np.vstack((x,newl))
+
+
+## 6 cv2.resize
