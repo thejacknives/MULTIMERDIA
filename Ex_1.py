@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as clr
+from scipy.fftpack import dct, idct
 import cv2
 
 def pad_image_to_multiple_of_32(image):
@@ -42,9 +43,48 @@ def upsample_yuv(y, cb, cr, upsampling_ratio):
         cr = cv2.resize(cr, (cr.shape[1]*2, cr.shape[0]), interpolation=cv2.INTER_CUBIC)
     
     # Upsample Y channel using bilinear interpolation
-    y = cv2.resize(y, (y.shape[1]*2, y.shape[0]*2), interpolation=cv2.INTER_LINEAR)
+    #y = cv2.resize(y, (y.shape[1]*2, y.shape[0]*2), interpolation=cv2.INTER_LINEAR)
     
     return y, cb, cr
+
+
+def calculate_dct(X):
+    # Apply DCT to rows and columns of channel
+    X_dct = dct(dct(X, norm="ortho").T, norm="ortho").T
+    return X_dct
+
+def calculate_idct(channel_dct):
+    # Apply IDCT to rows and columns of channel
+    channel_idct = idct(idct(channel_dct, norm='ortho').T, norm='ortho').T
+    return channel_idct
+
+def calculate_dct_blocks(matrix, size):
+    #if matrix.shape[0] % size != 0 or matrix.shape[1] % size != 0:
+    #    raise ValueError("Matrix shape must be a multiple of block size. Matrix size is " + str(matrix.shape) + " and block size is " + str(size) + ".")
+    
+    # Divide matrix into 8x8 blocks and apply DCT to each block
+    dct_blocks = np.zeros(matrix.shape)
+    for i in range(0, matrix.shape[0], size):
+        for j in range(0, matrix.shape[1], size):
+            block = matrix[i:i+size, j:j+size]
+            dct_block = calculate_dct(block)
+            dct_blocks[i:i+size, j:j+size] = dct_block
+    
+
+    return dct_blocks
+
+def calculate_idct_blocks(dct_blocks, size):
+    if dct_blocks.shape[0] % size != 0 or dct_blocks.shape[1] % size != 0:
+        raise ValueError("Matrix shape must be a multiple of block size")
+
+    idct_blocks = np.zeros(dct_blocks.shape)
+    for i in range(0, dct_blocks.shape[0], size):
+        for j in range(0, dct_blocks.shape[1], size):
+            block = dct_blocks[i:i+size, j:j+size]
+            idct_block = calculate_idct(block)
+            idct_blocks[i:i+size, j:j+size] = idct_block
+
+    return idct_blocks
 
 
 def encoder(image_path, colormap, size=(32, 32)):
@@ -123,9 +163,9 @@ def encoder(image_path, colormap, size=(32, 32)):
     cr = matriz_conversao[2][0] * r + (matriz_conversao[2][1] * g) + (matriz_conversao[2][2] * b) + 128
 
     #arredondamentos
-    y = np.round(y).astype(np.uint8)
-    cb = np.round(cb).astype(np.uint8)
-    cr = np.round(cr).astype(np.uint8)
+    y = np.round(y).astype(int)
+    cb = np.round(cb).astype(int)
+    cr = np.round(cr).astype(int)
 
     #ycbcr para imagem usando matplotlib
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
@@ -137,7 +177,7 @@ def encoder(image_path, colormap, size=(32, 32)):
     ax3.set_title('Componente Cr')
     plt.show()
 
-    y_d, cb_d, cr_d = subsample_yuv(y, cb, cr, "4:2:0")
+    y_d, cb_d, cr_d = subsample_yuv(y.astype(np.uint8), cb.astype(np.uint8), cr.astype(np.uint8), "4:2:2")
 
     #plot new image
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
@@ -149,11 +189,50 @@ def encoder(image_path, colormap, size=(32, 32)):
     ax3.set_title('Cr downsampled 4:2:0')
     plt.show()
 
+    # y_up, cb_up, cr_up = upsample_yuv(y_d, cb_d, cr_d, "4:2:0")
 
+    # if np.allclose(y, y_up):
+    #     print("Y is the same")
+    # else:
+    #     print("Y is different")
 
+    y_dct = dct(y_d)
+    cb_dct = dct(cb_d)
+    cr_dct = dct(cr_d)
 
+    Y_dct_log = np.log(np.abs(y_dct) + 0.0001)
+    Cb_dct_log = np.log(np.abs(cb_dct) + 0.0001)
+    Cr_dct_log = np.log(np.abs(cr_dct) + 0.0001)
 
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+    ax1.imshow(Y_dct_log, cmap='gray')
+    ax1.set_title('Y DCT')
+    ax2.imshow(Cb_dct_log, cmap='gray')
+    ax2.set_title('Cb DCT')
+    ax3.imshow(Cr_dct_log, cmap='gray')
+    ax3.set_title('Cr DCT')
+    plt.show()
+
+    y_dct8 = calculate_dct_blocks(y_dct, 8)
+    cb_dct8 = calculate_dct_blocks(cb_dct, 8)
+    cr_dct8 = calculate_dct_blocks(cr_dct, 8)
+
+    Y_dct8_log = np.log(np.abs(y_dct8) + 0.0001)
+    Cb_dct8_log = np.log(np.abs(cb_dct8) + 0.0001)
+    Cr_dct8_log = np.log(np.abs(cr_dct8) + 0.0001)
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+    ax1.imshow(Y_dct8_log, cmap='gray')
+    ax1.set_title('Y DCT 8x8')
+    ax2.imshow(Cb_dct8_log, cmap='gray')
+    ax2.set_title('Cb DCT 8x8')
+    ax3.imshow(Cr_dct8_log, cmap='gray')
+    ax3.set_title('Cr DCT 8x8')
+    plt.show()
     
+
+
+
 
 
 
