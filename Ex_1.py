@@ -21,14 +21,14 @@ def unpad_image(image, original_height, original_width):
     return image[:original_height, :original_width, :]
 
 def subsample_yuv(y, cb, cr, subsampling_ratio):
-    
     # Subsample Cb and Cr channels
+    y = y.astype('float32')
     if subsampling_ratio == "4:2:0":
-        cb = cv2.resize(cb, (cb.shape[1]//2, cb.shape[0]//2), interpolation=cv2.INTER_AREA)
-        cr = cv2.resize(cr, (cr.shape[1]//2, cr.shape[0]//2), interpolation=cv2.INTER_AREA)
+        cb = cv2.resize(cb.astype('float32'), (cb.shape[1]//2, cb.shape[0]//2), interpolation=cv2.INTER_AREA)
+        cr = cv2.resize(cr.astype('float32'), (cr.shape[1]//2, cr.shape[0]//2), interpolation=cv2.INTER_AREA)
     elif subsampling_ratio == "4:2:2":
-        cb = cv2.resize(cb, (cb.shape[1]//2, cb.shape[0]), interpolation=cv2.INTER_LINEAR)
-        cr = cv2.resize(cr, (cr.shape[1]//2, cr.shape[0]), interpolation=cv2.INTER_LINEAR)
+        cb = cv2.resize(cb.astype('float32'), (cb.shape[1]//2, cb.shape[0]), interpolation=cv2.INTER_LINEAR)
+        cr = cv2.resize(cr.astype('float32'), (cr.shape[1]//2, cr.shape[0]), interpolation=cv2.INTER_LINEAR)
     
     return y, cb, cr
 
@@ -196,9 +196,9 @@ def encoder(image_path, colormap, size=(32, 32)):
     # else:
     #     print("Y is different")
 
-    y_dct = dct(y_d)
-    cb_dct = dct(cb_d)
-    cr_dct = dct(cr_d)
+    y_dct = calculate_dct(y_d)
+    cb_dct = calculate_dct(cb_d)
+    cr_dct = calculate_dct(cr_d)
 
     Y_dct_log = np.log(np.abs(y_dct) + 0.0001)
     Cb_dct_log = np.log(np.abs(cb_dct) + 0.0001)
@@ -213,9 +213,9 @@ def encoder(image_path, colormap, size=(32, 32)):
     ax3.set_title('Cr DCT')
     plt.show()
 
-    y_dct8 = calculate_dct_blocks(y_dct, 8)
-    cb_dct8 = calculate_dct_blocks(cb_dct, 8)
-    cr_dct8 = calculate_dct_blocks(cr_dct, 8)
+    y_dct8 = calculate_dct_blocks(y_d, 8)
+    cb_dct8 = calculate_dct_blocks(cb_d, 8)
+    cr_dct8 = calculate_dct_blocks(cr_d, 8)
 
     Y_dct8_log = np.log(np.abs(y_dct8) + 0.0001)
     Cb_dct8_log = np.log(np.abs(cb_dct8) + 0.0001)
@@ -236,37 +236,16 @@ def encoder(image_path, colormap, size=(32, 32)):
 
 
 
-    return [y, cb, cr]
+    return [y_dct8, cb_dct8, cr_dct8], [image.shape[0], image.shape[1]]
 
-def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
-    encoded_image = Image.open(encoded_image_path)
+def decode(image, original_shape):
 
-    width, height = encoded_image.size
+    y_d = calculate_idct_blocks(image[0], 8)
+    cb_d = calculate_idct_blocks(image[1], 8)
+    cr_d = calculate_idct_blocks(image[2], 8)
 
-    decoded_image = Image.new("RGB", (width, height))
+    Y, Cb, Cr = upsample_yuv(y_d, cb_d, cr_d, "4:2:0")
 
-    # itera cada pixel e da decode a cor inicial
-    """"""
-    for x in range(width):
-        for y in range(height):
-            encoded_pixel = encoded_image.getpixel((x, y))
-            decoded_pixel = (encoded_pixel[1], encoded_pixel[1], encoded_pixel[1])
-            decoded_image.putpixel((x, y), decoded_pixel)
-            height, width = original_shape[:2]
-
-    padded_height, padded_width = padded_image.shape[:2]
-    w_pad = (padded_width - width)
-    h_pad = (padded_height - height)
-    unpadded_image = padded_image[:-h_pad, :-w_pad]
-
-    plt.imshow(cv2.cvtColor(unpadded_image, cv2.COLOR_BGR2RGB))
-    plt.title("Unpadded Image")
-    plt.show()
-
-    ycbcr_image = np.array(ycbcr_image)
-    Y = ycbcr_image[:, :, 0]
-    Cb = ycbcr_image[:, :, 1]
-    Cr = ycbcr_image[:, :, 2]
 
     # matriz_conversao = np.array([
     #     [1.0, 0.0, 1.402],
@@ -291,27 +270,23 @@ def decode(encoded_image_path, padded_image, original_shape, ycbcr_image):
     g = np.round(g).astype(int)
     b = np.round(b).astype(int)
 
-    rgb_array = np.stack([r, g, b], axis=-1).astype(np.uint8) 
-    rgb_image = Image.fromarray(np.uint8(rgb_array), mode='RGB')
+    padded_image = np.dstack((r, g, b))
+    
 
-    r, g, b = rgb_image.split()
+    height, width = original_shape
+    padded_height, padded_width = padded_image.shape[:2]
+    w_pad = (padded_width - width)
+    h_pad = (padded_height - height)
+    image = padded_image[:-h_pad, :-w_pad]
 
-
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-    ax1.imshow(r, cmap='gray')
-    ax1.set_title('Componente R')
-    ax2.imshow(g, cmap='gray')
-    ax2.set_title('Componente G')
-    ax3.imshow(b, cmap='gray')
-    ax3.set_title('Componente B')
+    plt.imshow(image)
     plt.show()
-
-    return [decoded_image, padded_image[:height, :width], rgb_image]
+    
+    
+    return
 
 
 colormap = [[200, 0, 0], [0, 200, 0], [0, 0, 200]]
-encoded_image, padded_image, ycbcr_image = encoder("barn_mountains.bmp", colormap)
+encoded_image, original_shape = encoder("barn_mountains.bmp", colormap)
 
-
-original_shape = np.array(Image.open("barn_mountains.bmp")).shape
-decoded_image, unpadded_image, rgb_image = decode(encoded_image, padded_image, original_shape, ycbcr_image)
+decode(encoded_image, original_shape)
