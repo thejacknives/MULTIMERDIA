@@ -315,9 +315,9 @@ def encoder(image_path, size=(32, 32)):
 
 def decode(image, original_shape):
 
-    y_d = inv_quantizacao_dpcm(image[0], quantization_matrix_Y, quality_factor)
-    cb_d = inv_quantizacao_dpcm(image[1], quantization_matrix_CbCr, quality_factor)
-    cr_d = inv_quantizacao_dpcm(image[2], quantization_matrix_CbCr, quality_factor)
+    image[0] = inv_quantizacao_dpcm(image[0], quantization_matrix_Y, quality_factor)
+    image[1] = inv_quantizacao_dpcm(image[1], quantization_matrix_CbCr, quality_factor)
+    image[2] = inv_quantizacao_dpcm(image[2], quantization_matrix_CbCr, quality_factor)
     block_size = 8
 
     y_d = calculate_idct_blocks(image[0], block_size)
