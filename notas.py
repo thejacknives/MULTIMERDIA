@@ -20,3 +20,25 @@ xp = np.vstack((x,newl))
 
 
 ## 6 cv2.resize
+
+'''
+75%
+YQ 158
+    -1
+    0
+
+
+Yb_DPCM 1
+    -1
+    0
+
+Yb_iDPCM 158
+    -1
+    0
+
+
+
+
+MAX DIFF 43
+
+'''

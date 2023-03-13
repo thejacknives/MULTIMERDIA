@@ -210,6 +210,7 @@ def encoder(image_path, size=(32, 32)):
     #padding
     # Load an example image
     image = plt.imread(image_path)
+    print(image.dtype)
 
     # Pad the image
     padded_image = pad_image_to_multiple_of_32(image)
@@ -240,7 +241,7 @@ def encoder(image_path, size=(32, 32)):
     ax3.set_title('Cr DCT 8x8')
     plt.show()
     
-
+    print("y_dct8:",y_dct8[8:16,8:16])
 
 
     return [y_dct8, cb_dct8, cr_dct8], [image.shape[0], image.shape[1]]
@@ -265,12 +266,9 @@ def decode(image, original_shape):
     g = Y * imc[1][0] + imc[1][1] * (Cb - 128) + imc[1][2] * (Cr - 128)
     b = Y * imc[2][0] + imc[2][1] * (Cb - 128) + imc[2][2] * (Cr - 128)
 
-    r = np.clip(r, 0, 255).astype(np.uint8)
-    g = np.clip(g, 0, 255).astype(np.uint8)
-    b = np.clip(b, 0, 255).astype(np.uint8)
-    r= np.round(r).astype(int)
-    g = np.round(g).astype(int)
-    b = np.round(b).astype(int)
+    r = np.clip(r, 0, 255).round().astype(np.uint8)
+    g = np.clip(g, 0, 255).round().astype(np.uint8)
+    b = np.clip(b, 0, 255).round().astype(np.uint8)
 
     padded_image = np.dstack((r, g, b))
     
