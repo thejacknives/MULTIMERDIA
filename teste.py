@@ -4,7 +4,7 @@ import matplotlib.colors as clr
 from scipy.fftpack import dct, idct
 import cv2
 
-quality_factor = 50
+quality_factor = 70
 
 quantization_matrix_Y = np.array(
     [[16, 11, 10, 16, 24, 40, 41, 61], [12, 12, 14, 19, 26, 58, 60, 55], [14, 13, 16, 24, 40, 57, 69, 56],
@@ -292,13 +292,13 @@ def encoder(image_path, size=(32, 32)):
     cb_dct8 = calculate_dct_blocks(cb_d, block_size)
     cr_dct8 = calculate_dct_blocks(cr_d, block_size)
 
+    
+    print("y_dct8:",y_dct8[8:16,8:16])
     y_dct8_quant = quantizacao_dpcm(y_dct8, quantization_matrix_Y, quality_factor)
     cb_dct8_quant = quantizacao_dpcm(cb_dct8, quantization_matrix_CbCr, quality_factor)
     cr_dct8_quant = quantizacao_dpcm(cr_dct8, quantization_matrix_CbCr, quality_factor)
 
    
-    
-    print("y_dct8:",y_dct8[8:16,8:16])
 
     #show the 3 images in same plot
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
@@ -310,6 +310,10 @@ def encoder(image_path, size=(32, 32)):
     ax3.set_title('Cr DCT 8x8 Quantizado')
     plt.show()
     
+    #print y quantized matrix
+    print("y_dct8_quant:",y_dct8_quant[8:16,8:16])
+
+
 
     return [y_dct8_quant, cb_dct8_quant, cr_dct8_quant], [image.shape[0], image.shape[1]],
 
