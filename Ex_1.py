@@ -22,13 +22,12 @@ def unpad_image(image, original_height, original_width):
 
 def subsample_yuv(y, cb, cr, subsampling_ratio):
     # Subsample Cb and Cr channels
-    y = y.astype('float32')
     if subsampling_ratio == "4:2:0":
-        cb = cv2.resize(cb.astype('float32'), (cb.shape[1]//2, cb.shape[0]//2), interpolation=cv2.INTER_AREA)
-        cr = cv2.resize(cr.astype('float32'), (cr.shape[1]//2, cr.shape[0]//2), interpolation=cv2.INTER_AREA)
+        cb = cv2.resize(cb, (cb.shape[1]//2, cb.shape[0]//2), interpolation=cv2.INTER_AREA)
+        cr = cv2.resize(cr, (cr.shape[1]//2, cr.shape[0]//2), interpolation=cv2.INTER_AREA)
     elif subsampling_ratio == "4:2:2":
-        cb = cv2.resize(cb.astype('float32'), (cb.shape[1]//2, cb.shape[0]), interpolation=cv2.INTER_LINEAR)
-        cr = cv2.resize(cr.astype('float32'), (cr.shape[1]//2, cr.shape[0]), interpolation=cv2.INTER_LINEAR)
+        cb = cv2.resize(cb, (cb.shape[1]//2, cb.shape[0]), interpolation=cv2.INTER_LINEAR)
+        cr = cv2.resize(cr, (cr.shape[1]//2, cr.shape[0]), interpolation=cv2.INTER_LINEAR)
     
     return y, cb, cr
 
@@ -106,6 +105,7 @@ def encoder(image_path, colormap, size=(32, 32)):
     #padding
     # Load an example image
     image = plt.imread(image_path)
+    print(image.dtype)
 
     # Pad the image
     padded_image = pad_image_to_multiple_of_32(image)
@@ -162,10 +162,7 @@ def encoder(image_path, colormap, size=(32, 32)):
     cb = matriz_conversao[1][0] * r + (matriz_conversao[1][1]) * g + matriz_conversao[1][2] * b + 128
     cr = matriz_conversao[2][0] * r + (matriz_conversao[2][1] * g) + (matriz_conversao[2][2] * b) + 128
 
-    #arredondamentos
-    y = np.round(y).astype(int)
-    cb = np.round(cb).astype(int)
-    cr = np.round(cr).astype(int)
+    print("y cb cr:",y[8:16,8:16])
 
     #ycbcr para imagem usando matplotlib
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
@@ -177,16 +174,18 @@ def encoder(image_path, colormap, size=(32, 32)):
     ax3.set_title('Componente Cr')
     plt.show()
 
-    y_d, cb_d, cr_d = subsample_yuv(y.astype(np.uint8), cb.astype(np.uint8), cr.astype(np.uint8), "4:2:0")
+    y_d, cb_d, cr_d = subsample_yuv(y, cb, cr, "4:2:2")
+
+    print("y_d:", y_d[8:16,8:16])
 
     #plot new image
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
     ax1.imshow(y_d, cmap='gray')
-    ax1.set_title('Y downsampled 4:2:0')
+    ax1.set_title('Y downsampled 4:2:2')
     ax2.imshow(cb_d, cmap='gray')
-    ax2.set_title('Cb downsampled 4:2:0')
+    ax2.set_title('Cb downsampled 4:2:2')
     ax3.imshow(cr_d, cmap='gray')
-    ax3.set_title('Cr downsampled 4:2:0')
+    ax3.set_title('Cr downsampled 4:2:2')
     plt.show()
 
     # y_up, cb_up, cr_up = upsample_yuv(y_d, cb_d, cr_d, "4:2:0")
@@ -230,7 +229,7 @@ def encoder(image_path, colormap, size=(32, 32)):
     ax3.set_title('Cr DCT 8x8')
     plt.show()
     
-
+    print("y_dct8:",y_dct8[8:16,8:16])
 
 
 
@@ -244,7 +243,7 @@ def decode(image, original_shape):
     cb_d = calculate_idct_blocks(image[1], 8)
     cr_d = calculate_idct_blocks(image[2], 8)
 
-    Y, Cb, Cr = upsample_yuv(y_d, cb_d, cr_d, "4:2:0")
+    Y, Cb, Cr = upsample_yuv(y_d, cb_d, cr_d, "4:2:2")
 
 
     # matriz_conversao = np.array([
@@ -263,12 +262,9 @@ def decode(image, original_shape):
     g = Y * matriz_conversao[1][0] + matriz_conversao[1][1] * (Cb - 128) + matriz_conversao[1][2] * (Cr - 128)
     b = Y * matriz_conversao[2][0] + matriz_conversao[2][1] * (Cb - 128) + matriz_conversao[2][2] * (Cr - 128)
 
-    r = np.clip(r, 0, 255).astype(np.uint8)
-    g = np.clip(g, 0, 255).astype(np.uint8)
-    b = np.clip(b, 0, 255).astype(np.uint8)
-    r= np.round(r).astype(int)
-    g = np.round(g).astype(int)
-    b = np.round(b).astype(int)
+    r = np.clip(r, 0, 255).round().astype(np.uint8)
+    g = np.clip(g, 0, 255).round().astype(np.uint8)
+    b = np.clip(b, 0, 255).round().astype(np.uint8)
 
     padded_image = np.dstack((r, g, b))
     
@@ -288,5 +284,6 @@ def decode(image, original_shape):
 
 colormap = [[200, 0, 0], [0, 200, 0], [0, 0, 200]]
 encoded_image, original_shape = encoder("barn_mountains.bmp", colormap)
+#ola helena!! ganda trabalho
 
 decode(encoded_image, original_shape)
