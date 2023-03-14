@@ -4,7 +4,7 @@ import matplotlib.colors as clr
 from scipy.fftpack import dct, idct
 import cv2
 
-quality_factor = 70
+quality_factor = 75
 
 quantization_matrix_Y = np.array(
     [[16, 11, 10, 16, 24, 40, 41, 61], [12, 12, 14, 19, 26, 58, 60, 55], [14, 13, 16, 24, 40, 57, 69, 56],
@@ -17,6 +17,8 @@ quantization_matrix_CbCr = np.array([[17, 18, 24, 47, 99, 99, 99, 99], [18, 21, 
                          [99, 99, 99, 99, 99, 99, 99, 99], [99, 99, 99, 99, 99, 99, 99, 99]])
 
 sub_sampling = "4:2:0"
+
+block_size = 8
 
 
 matriz_conversao = np.array([
@@ -206,7 +208,7 @@ def rgb_to_ycbcr(r,g,b):
 
     return y, cb, cr
 
-def quantizacao_dpcm(canal_dct, quantization_matrix, quality_factor):
+def quantizacao(canal_dct, quantization_matrix, quality_factor):
     if quality_factor >= 50:
         scale_factor = ((100 - quality_factor) / 50)
     else:
@@ -228,17 +230,26 @@ def quantizacao_dpcm(canal_dct, quantization_matrix, quality_factor):
                 quantized_block = np.round(quantized_block).astype(int)
             else:
                 quantized_block = np.round(block).astype(int)
-            # EXERCICIO 9 #
-            aux_anterior = quantized_block[0][0]
-            quantized_block[0][0] = quantized_block[0][0] - valor_anterior
-            valor_anterior = aux_anterior
-            # # # # # # # #
+            
             output[lin:lin + 8, col:col + 8] = quantized_block  
     output = np.round(output).astype(int)
     
     return output
 
-def inv_quantizacao_dpcm(canal_dct, quantization_matrix, quality_factor):
+def dcmp(canal):
+    size = canal.shape
+    output = np.zeros(canal.shape)
+    valor_anterior = 0
+    for lin in range(0, size[0], 8):
+        for col in range(0, size[1], 8):
+            block = canal[lin:lin + 8, col:col + 8]
+            aux_anterior = block[0][0]
+            block[0][0] = block[0][0] - valor_anterior
+            valor_anterior = aux_anterior
+            output[lin:lin + 8, col:col + 8] = block  
+    return np.round(output).astype(int)
+
+def inv_quantizacao(canal_dct, quantization_matrix, quality_factor):
     if quality_factor >= 50:
         scale_factor = ((100 - quality_factor) / 50)
     else:
@@ -254,10 +265,6 @@ def inv_quantizacao_dpcm(canal_dct, quantization_matrix, quality_factor):
     for lin in range(0, size[0], 8):
         for col in range(0, size[1], 8):
             block = canal_dct[lin:lin + 8, col:col + 8]
-            # EXERCICIO 9 #
-            block[0][0] = block[0][0] + valor_anterior
-            valor_anterior = block[0][0]
-            # # # # # # # #
             if quality_factor != 100:
                 quantized_block = np.multiply(block, true_quantization_matrix)
             else:
@@ -266,6 +273,18 @@ def inv_quantizacao_dpcm(canal_dct, quantization_matrix, quality_factor):
     output = output.astype(float)
 
     return output
+
+def idcmp(canal):
+    size = canal.shape
+    output = np.zeros(canal.shape)
+    valor_anterior = 0
+    for lin in range(0, size[0], 8):
+        for col in range(0, size[1], 8):
+            block = canal[lin:lin + 8, col:col + 8]
+            block[0][0] = block[0][0] + valor_anterior
+            valor_anterior = block[0][0]
+            output[lin:lin + 8, col:col + 8] = block  
+    return np.round(output).astype(int)
 
 
 def encoder(image_path, size=(32, 32)):
@@ -294,9 +313,10 @@ def encoder(image_path, size=(32, 32)):
 
     
     print("y_dct8:",y_dct8[8:16,8:16])
-    y_dct8_quant = quantizacao_dpcm(y_dct8, quantization_matrix_Y, quality_factor)
-    cb_dct8_quant = quantizacao_dpcm(cb_dct8, quantization_matrix_CbCr, quality_factor)
-    cr_dct8_quant = quantizacao_dpcm(cr_dct8, quantization_matrix_CbCr, quality_factor)
+    y_dct8_quant = quantizacao(y_dct8, quantization_matrix_Y, quality_factor)
+    cb_dct8_quant = quantizacao(cb_dct8, quantization_matrix_CbCr, quality_factor)
+    cr_dct8_quant = quantizacao(cr_dct8, quantization_matrix_CbCr, quality_factor)
+
 
    
 
@@ -309,24 +329,46 @@ def encoder(image_path, size=(32, 32)):
     ax3.imshow(np.log10(np.absolute(cr_dct8_quant) + 0.0001), cmap='gray')
     ax3.set_title('Cr DCT 8x8 Quantizado')
     plt.show()
-    
     #print y quantized matrix
-    print("y_dct8_quant:",y_dct8_quant[8:16,8:16])
+    print("YQ:",y_dct8_quant[8:16,8:16])
+
+
+    y_dct8_quant_dpcm = dcmp(y_dct8_quant)
+    cb_dct8_quant_dpcm = dcmp(cb_dct8_quant)
+    cr_dct8_quant_dpcm = dcmp(cr_dct8_quant)
+
+    #show the 3 images in same plot
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+    ax1.imshow(np.log10(np.absolute(y_dct8_quant_dpcm) + 0.0001), cmap='gray')
+    ax1.set_title('Y DCT 8x8 Quantizado DPCM')
+    ax2.imshow(np.log10(np.absolute(cb_dct8_quant_dpcm) + 0.0001), cmap='gray')
+    ax2.set_title('Cb DCT 8x8 Quantizado DPCM')
+    ax3.imshow(np.log10(np.absolute(cr_dct8_quant_dpcm) + 0.0001), cmap='gray')
+    ax3.set_title('Cr DCT 8x8 Quantizado DPCM')
+    plt.show()
+
+    print("YCPMD:",y_dct8_quant_dpcm[8:16,8:16])
+    
 
 
 
-    return [y_dct8_quant, cb_dct8_quant, cr_dct8_quant], [image.shape[0], image.shape[1]],
+    return [y_dct8_quant_dpcm, cb_dct8_quant_dpcm, cr_dct8_quant_dpcm], [image.shape[0], image.shape[1]],
 
 def decode(image, original_shape):
 
-    image[0] = inv_quantizacao_dpcm(image[0], quantization_matrix_Y, quality_factor)
-    image[1] = inv_quantizacao_dpcm(image[1], quantization_matrix_CbCr, quality_factor)
-    image[2] = inv_quantizacao_dpcm(image[2], quantization_matrix_CbCr, quality_factor)
-    block_size = 8
+    y_dct8_quant = idcmp(image[0])
+    cb_dct8_quant = idcmp(image[1])
+    cr_dct8_quant = idcmp(image[2])
 
-    y_d = calculate_idct_blocks(image[0], block_size)
-    cb_d = calculate_idct_blocks(image[1], block_size)
-    cr_d = calculate_idct_blocks(image[2], block_size)
+    print("Yb_iDPCM:",y_dct8_quant[8:16,8:16])
+
+    y_dct8 = inv_quantizacao(y_dct8_quant, quantization_matrix_Y, quality_factor)
+    cb_dct8 = inv_quantizacao(cb_dct8_quant, quantization_matrix_CbCr, quality_factor)
+    cr_dct8 = inv_quantizacao(cr_dct8_quant, quantization_matrix_CbCr, quality_factor)
+
+    y_d = calculate_idct_blocks(y_dct8, block_size)
+    cb_d = calculate_idct_blocks(cb_dct8, block_size)
+    cr_d = calculate_idct_blocks(cr_dct8, block_size)
 
     Y, Cb, Cr = upsample_yuv(y_d, cb_d, cr_d, sub_sampling)
 
