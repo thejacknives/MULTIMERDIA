@@ -218,6 +218,8 @@ def quantizacao(canal_dct, quantization_matrix, quality_factor):
         true_quantization_matrix = clamping(true_quantization_matrix, 255, 1)
     else:
         true_quantization_matrix = quantization_matrix
+
+    true_quantization_matrix = true_quantization_matrix.astype(np.uint8)
     size = canal_dct.shape
     output = np.zeros(canal_dct.shape)
     valor_anterior = 0
@@ -227,9 +229,9 @@ def quantizacao(canal_dct, quantization_matrix, quality_factor):
             block = canal_dct[lin:lin + 8, col:col + 8]
             if quality_factor != 100:
                 quantized_block = np.divide(block, true_quantization_matrix)
-                quantized_block = np.round(quantized_block).astype(int)
+                quantized_block = quantized_block
             else:
-                quantized_block = np.round(block).astype(int)
+                quantized_block = block
             
             output[lin:lin + 8, col:col + 8] = quantized_block  
     output = np.round(output).astype(int)
@@ -238,7 +240,7 @@ def quantizacao(canal_dct, quantization_matrix, quality_factor):
 
 def dcmp(canal):
     size = canal.shape
-    output = np.zeros(canal.shape)
+    output = np.zeros(canal.shape, dtype=np.int16)
     valor_anterior = 0
     for lin in range(0, size[0], 8):
         for col in range(0, size[1], 8):
@@ -247,7 +249,7 @@ def dcmp(canal):
             block[0][0] = block[0][0] - valor_anterior
             valor_anterior = aux_anterior
             output[lin:lin + 8, col:col + 8] = block  
-    return np.round(output).astype(int)
+    return output
 
 def inv_quantizacao(canal_dct, quantization_matrix, quality_factor):
     if quality_factor >= 50:
@@ -276,7 +278,7 @@ def inv_quantizacao(canal_dct, quantization_matrix, quality_factor):
 
 def idcmp(canal):
     size = canal.shape
-    output = np.zeros(canal.shape)
+    output = np.zeros(canal.shape, dtype=np.int16)
     valor_anterior = 0
     for lin in range(0, size[0], 8):
         for col in range(0, size[1], 8):
@@ -284,15 +286,11 @@ def idcmp(canal):
             block[0][0] = block[0][0] + valor_anterior
             valor_anterior = block[0][0]
             output[lin:lin + 8, col:col + 8] = block  
-    return np.round(output).astype(int)
+    return output
 
 
-def encoder(image_path, size=(32, 32)):
-   
-    #padding
-    # Load an example image
-    image = plt.imread(image_path)
-    print(image.dtype)
+def encoder(image, size=(32, 32)):
+
 
     # Pad the image
     padded_image = pad_image_to_multiple_of_32(image)
@@ -352,7 +350,7 @@ def encoder(image_path, size=(32, 32)):
 
 
 
-    return [y_dct8_quant_dpcm, cb_dct8_quant_dpcm, cr_dct8_quant_dpcm], [image.shape[0], image.shape[1]],
+    return [y_dct8_quant_dpcm, cb_dct8_quant_dpcm, cr_dct8_quant_dpcm], [image.shape[0], image.shape[1]], y
 
 def decode(image, original_shape):
 
@@ -401,8 +399,24 @@ def decode(image, original_shape):
     plt.show()
     
     
-    return
+    return image, Y
 
-encoded_image, original_shape = encoder("barn_mountains.bmp")
 
-decode(encoded_image, original_shape)
+image = plt.imread("barn_mountains.bmp")
+encoded_image, original_shape, y = encoder(image)
+
+decoded_image, yr = decode(encoded_image, original_shape)
+
+E = abs(y - yr)
+print("E: ", np.max(E))
+print(decoded_image[0][0])
+mse = np.sum((image.astype(float)-decoded_image.astype(float))**2) / (y.shape[0] * y.shape[1])
+print("mse:", mse)
+rmse = np.sqrt(mse)
+print("rmse:", rmse)
+p = np.sum(image.astype(float)**2) / (y.shape[0] * y.shape[1])
+snr = 10 * np.log10(p / mse)
+print("snr:", snr)
+psnr = 10 * np.log10(np.max(image)**2 / rmse)
+print("psnr:", psnr)
+
