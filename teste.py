@@ -4,7 +4,7 @@ import matplotlib.colors as clr
 from scipy.fftpack import dct, idct
 import cv2
 
-quality_factor = 75
+quality_factor = 10
 
 quantization_matrix_Y = np.array(
     [[16, 11, 10, 16, 24, 40, 41, 61], [12, 12, 14, 19, 26, 58, 60, 55], [14, 13, 16, 24, 40, 57, 69, 56],
@@ -166,19 +166,19 @@ def divide_rgb(image):
     # VE COM OS CHANNELS CRIADOS EM CIMA
     plt.subplot(2, 2, 1)
     plt.imshow(image)
-    plt.title("Original Image (RGB) (Imagem original)")
+    plt.title("Original Image (RGB)")
 
     plt.subplot(2, 2, 2)
     plt.imshow(r, cmred)
-    plt.title("Red Component (Reds Colormap) (El componente rojo)")
+    plt.title("Red Component (Reds Colormap)")
 
     plt.subplot(2, 2, 3)
     plt.imshow(g, cmgreen)
-    plt.title("Green Component (Greens Colormap) (El componente verde)")
+    plt.title("Green Component (Greens Colormap)")
 
     plt.subplot(2, 2, 4)
     plt.imshow(b, cmblue)
-    plt.title("Blue Component (Blues Colormap) (El componente azul)")
+    plt.title("Blue Component (Blues Colormap)")
 
     plt.show()
 
@@ -408,7 +408,11 @@ encoded_image, original_shape, y = encoder(image)
 decoded_image, yr = decode(encoded_image, original_shape)
 
 E = abs(y - yr)
-print("E: ", np.max(E))
+#plot e
+plt.imshow(E, cmap='gray')
+plt.show()
+
+print("E: ", np.mean(E))
 print(decoded_image[0][0])
 mse = np.sum((image.astype(float)-decoded_image.astype(float))**2) / (y.shape[0] * y.shape[1])
 print("mse:", mse)
@@ -417,6 +421,6 @@ print("rmse:", rmse)
 p = np.sum(image.astype(float)**2) / (y.shape[0] * y.shape[1])
 snr = 10 * np.log10(p / mse)
 print("snr:", snr)
-psnr = 10 * np.log10(np.max(image)**2 / rmse)
+psnr = 10 * np.log10(np.max(image.astype(float))**2 / mse)
 print("psnr:", psnr)
 
