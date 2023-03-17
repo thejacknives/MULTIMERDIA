@@ -4,7 +4,7 @@ import matplotlib.colors as clr
 from scipy.fftpack import dct, idct
 import cv2
 
-quality_factor = 10
+quality_factor = 100
 
 quantization_matrix_Y = np.array(
     [[16, 11, 10, 16, 24, 40, 41, 61], [12, 12, 14, 19, 26, 58, 60, 55], [14, 13, 16, 24, 40, 57, 69, 56],
@@ -387,13 +387,12 @@ def decode(image, original_shape):
     b = np.clip(b, 0, 255).round().astype(np.uint8)
 
     padded_image = np.dstack((r, g, b))
-    
 
     height, width = original_shape
-    padded_height, padded_width = padded_image.shape[:2]
-    w_pad = (padded_width - width)
-    h_pad = (padded_height - height)
-    image = padded_image[:-h_pad, :-w_pad]
+    #padded_height, padded_width = padded_image.shape[:2]
+    image = padded_image[:height, :width, :]
+    print(image.shape)
+    print(padded_image.shape)
 
     plt.imshow(image)
     plt.show()
@@ -402,7 +401,7 @@ def decode(image, original_shape):
     return image, Y
 
 
-image = plt.imread("barn_mountains.bmp")
+image = plt.imread("peppers.bmp")
 encoded_image, original_shape, y = encoder(image)
 
 decoded_image, yr = decode(encoded_image, original_shape)
