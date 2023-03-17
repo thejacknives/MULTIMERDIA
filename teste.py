@@ -140,9 +140,6 @@ def calculate_dct_blocks(matrix, size):
     return dct_blocks
 
 def calculate_idct_blocks(dct_blocks, size):
-    if dct_blocks.shape[0] % size != 0 or dct_blocks.shape[1] % size != 0:
-        raise ValueError("Matrix shape must be a multiple of block size")
-
     idct_blocks = np.zeros(dct_blocks.shape)
     for i in range(0, dct_blocks.shape[0], size):
         for j in range(0, dct_blocks.shape[1], size):
