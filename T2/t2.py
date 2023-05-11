@@ -10,22 +10,18 @@ import scipy.stats as st
 from scipy import spatial
 from scipy.spatial import distance
 
-sr = 22050
-mono = True
+# discartar a 1 e a ultima coluna dos top100
+
+SR = 22050
+MONO = True
 warnings.filterwarnings("ignore")
 
 def normalize(arrToNorm):
-    normalized = np.zeros(arrToNorm.shape)
-    
-    for i in range(len(arrToNorm[0])):
-        max_v = arrToNorm[:, i].max()
-        min_v = arrToNorm[:, i].min()
-        if (max_v == min_v):
-            normalized[:, i] = 0
-        else:
-            normalized[:, i] = (arrToNorm[:, i] - min_v)/(max_v - min_v)
-        
-    return normalized
+    maxs = np.max(arrToNorm, axis = 0)
+    mins = np.min(arrToNorm, axis = 0)
+    ans= np.array(arrToNorm)
+    ans[np.arange(len(arrToNorm)),:] = (ans[np.arange(len(arrToNorm)),: ] - mins)/(maxs-mins)
+    return ans
 
 def statistics(feature):
     mean = np.mean(feature)
@@ -38,50 +34,37 @@ def statistics(feature):
     
     return np.array([mean, desv, skew, kurto, median, max_m, min_m])
 
-def extract_features(audio_file):
-    y, fs = librosa.load(audio_file, sr=sr, mono=mono)
+def features_librosa(dirname):    
+    ans=np.array([])
+    i=0
+    for filename in os.listdir(dirname):
+        print(filename, i)
+        i+=1
+        # spectral features
+        y,fs = librosa.load(dirname+'/'+filename, sr = SR, mono = MONO)
+        mfccs_file = librosa.feature.mfcc(y, sr=SR, n_mfcc=13)
+        spcentroid = librosa.feature.spectral_centroid(y, sr=SR)
+        spband = librosa.feature.spectral_bandwidth(y, sr=SR)
+        spcontrast = librosa.feature.spectral_contrast(y, sr=SR)
+        spflatness = librosa.feature.spectral_flatness(y)
+        sprolloff = librosa.feature.spectral_rolloff(y, sr=SR)
+        rms = librosa.feature.rms(y)
+        zcr = librosa.feature.zero_crossing_rate(y)
+        f0 = librosa.yin(y, sr=SR, fmin=20, fmax=11025)
+        f0[f0==11025]=0
+        all_features_array = np.vstack((mfccs_file, spcentroid, spband, spcontrast, spflatness, sprolloff, f0, rms, zcr))
+        all_stats = np.apply_along_axis(statistics, 1, all_features_array).flatten()
 
-    # Features Espectrais
-    mfcc = librosa.feature.mfcc(y=y, n_mfcc=13)
-    spectral_centroid = librosa.feature.spectral_centroid(y=y)[0, :]
-    spectral_bandwidth = librosa.feature.spectral_bandwidth(y=y)[0, :]
-    spectral_contrast = librosa.feature.spectral_contrast(y=y)
-    print(spectral_contrast.shape)
-    spectral_flatness = librosa.feature.spectral_flatness(y=y)[0, :]
-    spectral_rolloff = librosa.feature.spectral_rolloff(y=y)[0, :]
 
-    # Features Temporais
-    f0 = librosa.yin(y=y, fmin=20, fmax=fs / 2)
-    f0[f0 == fs / 2] = 0
-    rms = librosa.feature.rms(y=y)[0, :]
-    zero_cross = librosa.feature.zero_crossing_rate(y=y)[0, :]
-
-    # Outras features
-    time = librosa.beat.tempo(y=y)
-
-    features = [
-        mfcc,
-        spectral_centroid,
-        spectral_bandwidth,
-        spectral_contrast,
-        spectral_flatness,
-        spectral_rolloff,
-        f0,
-        rms,
-        zero_cross,
-        time[0]
-    ]
-
-    stats = []
-
-    for feature in features:
-        if len(feature.shape) > 1:
-            for i in range(feature.shape[0]):
-                stats.extend(statistics(feature[i, :]))
+        tempo = librosa.beat.tempo(y,sr=SR)
+        aid = np.append(all_stats, tempo)
+        if i==1:
+            ans = np.array(aid)
         else:
-            stats.extend(statistics(feature))
+            ans= np.vstack((ans,aid))
 
-    return np.array(stats)
+    ans = np.array(ans)
+    return normalize(ans)
 
 def euclidean_distance(a, b):
     return distance.euclidean(a, b)
@@ -97,8 +80,9 @@ def calculate_similarity_matrix(features, similarity_function):
     similarity_matrix = np.zeros((n, n))
 
     for i in range(n):
-        for j in range(n):
+        for j in range(i+1, n):
             similarity_matrix[i, j] = similarity_function(features[i], features[j])
+            similarity_matrix[j, i] = similarity_matrix[i, j] 
 
     return similarity_matrix
 
@@ -115,39 +99,31 @@ def clean_features(features):
     return features_cleaned
 
 
+
 def main():
     # 2.1.1. Ler o ficheiro e criar um array numpy com as features disponibilizadas.
     file_path = 'Features/top100_features.csv'
 
     if os.path.isfile(file_path):
-        features_array = np.genfromtxt(file_path, delimiter=',', skip_header=1)
+        features_array = np.genfromtxt(file_path, delimiter=',', skip_header=1)[:,1:-1]
 
-        # 2.1.2. Normalizar as features no intervalo [0, 1].
+        # 2.1.2. Normalizar as features.
         normalized_features_array = normalize(features_array)
 
-        # 2.1.3. Criar e gravar em ficheiro um array numpy com as features extraídas (linhas =
-        # músicas; colunas = valores das features).
+        # 2.1.3. Criar e gravar em ficheiro o array com as features extraídas linhas = músicas | colunas = valores das features.
         np.savetxt("Features/top100_features_normalized.csv", normalized_features_array, fmt = "%lf", delimiter= ",")
 
     else:
         print(f'O ficheiro {file_path} não foi encontrado.')
         
-    audio_folder = 'Queries'
-    audio_files = [file for file in os.listdir(audio_folder) if file.endswith('.mp3')]
+    audio_folder = 'Dataset/Musics'
 
-    stat = np.zeros((900, 196), dtype=np.float64)
+    features_norm_obtained  = features_librosa(audio_folder)
+    print(features_norm_obtained.shape)
 
-    for index, audio_file in enumerate(audio_files):
-        file_path = os.path.join(audio_folder, audio_file)
-        features = extract_features(file_path)
-        
-        stat[index] = features
-
-    # 2.2.3. Normalizar as features no intervalo [0, 1].
-    normalized_features_array = normalize(stat)
     # 2.2.4. Criar e gravar em ficheiro o array numpy com as features extraídas.
     
-    np.savetxt("Features/features_900_normalized.csv", normalized_features_array, fmt = "%lf", delimiter= ",")
+    np.savetxt("Features/features_900_normalized.csv", features_norm_obtained, fmt = "%lf", delimiter= ",")
 
     top100_featuresN = np.loadtxt("Features/top100_features_normalized.csv", delimiter=",")
     features_900_normalized = np.loadtxt("Features/features_900_normalized.csv", delimiter=",")
